@@ -1,0 +1,14 @@
+prefix=/path/to/workdir/FFmpeg/tvos/thin/arm64e
+exec_prefix=${prefix}
+libdir=/path/to/workdir/FFmpeg/tvos/thin/arm64e/lib
+includedir=/path/to/workdir/FFmpeg/tvos/thin/arm64e/include
+
+Name: libavutil
+Description: FFmpeg utility library
+Version: 59.39.100
+Requires: 
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavutil -pthread -lm -framework VideoToolbox -framework CoreFoundation -framework CoreMedia -framework CoreVideo
+Libs.private: 
+Cflags: -I${includedir}

@@ -1,0 +1,14 @@
+prefix=/path/to/workdir/FFmpeg/xros/thin/arm64
+exec_prefix=${prefix}
+libdir=/path/to/workdir/FFmpeg/xros/thin/arm64/lib
+includedir=/path/to/workdir/FFmpeg/xros/thin/arm64/include
+
+Name: libavfilter
+Description: FFmpeg audio/video filtering library
+Version: 10.4.100
+Requires: libswscale >= 8.3.100, libavformat >= 61.7.100, libavcodec >= 61.19.101, libswresample >= 5.3.100, libavutil >= 59.39.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavfilter -pthread -lm -L/path/to/workdir/libplacebo/xros/thin/arm64/lib -lplacebo -ldl -L/path/to/workdir/libshaderc/xros/thin/arm64/lib -lshaderc_combined -L/path/to/workdir/vulkan/xros/thin/arm64/lib -lMoltenVK -framework CoreFoundation -framework CoreGraphics -framework Foundation -framework IOSurface -framework Metal -framework QuartzCore -framework UIKit -framework IOKit -L/path/to/workdir/lcms2/xros/thin/arm64/lib -llcms2 -lm -L/path/to/workdir/libdovi/xros/thin/arm64/lib -ldovi -liconv -lSystem -lc -lm -L/path/to/workdir/libass/xros/thin/arm64/lib -lass -liconv -framework CoreText -framework CoreFoundation -L/path/to/workdir/libfreetype/xros/thin/arm64/lib -lfreetype -lz -L/path/to/workdir/libfribidi/xros/thin/arm64/lib -lfribidi -L/path/to/workdir/libharfbuzz/xros/thin/arm64/lib -lharfbuzz -lm -L/path/to/workdir/libunibreak/xros/thin/arm64/lib -lunibreak -L/path/to/workdir/libshaderc/xros/thin/arm64/lib -lshaderc_combined
+Libs.private: 
+Cflags: -I${includedir}

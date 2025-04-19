@@ -1,0 +1,14 @@
+prefix=/path/to/workdir/FFmpeg/tvos/thin/arm64e
+exec_prefix=${prefix}
+libdir=/path/to/workdir/FFmpeg/tvos/thin/arm64e/lib
+includedir=/path/to/workdir/FFmpeg/tvos/thin/arm64e/include
+
+Name: libavdevice
+Description: FFmpeg device handling library
+Version: 61.3.100
+Requires: libavformat >= 61.7.100, libavcodec >= 61.19.101, libswresample >= 5.3.100, libavutil >= 59.39.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavdevice -lm
+Libs.private: 
+Cflags: -I${includedir}

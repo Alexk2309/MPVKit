@@ -1,0 +1,14 @@
+prefix=/path/to/workdir/FFmpeg/xrsimulator/thin/arm64
+exec_prefix=${prefix}
+libdir=/path/to/workdir/FFmpeg/xrsimulator/thin/arm64/lib
+includedir=/path/to/workdir/FFmpeg/xrsimulator/thin/arm64/include
+
+Name: libavcodec
+Description: FFmpeg codec library
+Version: 61.19.101
+Requires: libswresample >= 5.3.100, libavutil >= 59.39.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavcodec -L/path/to/workdir/lcms2/xrsimulator/thin/arm64/lib -llcms2 -lm -lm -L/path/to/workdir/libdav1d/xrsimulator/thin/arm64/lib -ldav1d -L/path/to/workdir/libuavs3d/xrsimulator/thin/arm64/lib -luavs3d -lm -lpthread -framework AudioToolbox -pthread -lz -framework VideoToolbox -framework CoreFoundation -framework CoreMedia -framework CoreVideo
+Libs.private: 
+Cflags: -I${includedir}

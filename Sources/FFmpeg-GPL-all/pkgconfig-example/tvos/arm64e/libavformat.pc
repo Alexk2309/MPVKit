@@ -1,0 +1,14 @@
+prefix=/path/to/workdir/FFmpeg/tvos/thin/arm64e
+exec_prefix=${prefix}
+libdir=/path/to/workdir/FFmpeg/tvos/thin/arm64e/lib
+includedir=/path/to/workdir/FFmpeg/tvos/thin/arm64e/include
+
+Name: libavformat
+Description: FFmpeg container format library
+Version: 61.7.100
+Requires: libavcodec >= 61.19.101, libswresample >= 5.3.100, libavutil >= 59.39.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavformat -lm -lxml2 -lz -lpthread -licucore -lm -lgmp -lz -L/path/to/workdir/gnutls/tvos/thin/arm64e/lib -lgnutls -framework Security -framework CoreFoundation -L/path/to/workdir/nettle/tvos/thin/arm64e/lib -lhogweed -lgmp -lnettle -lsmbclient
+Libs.private: 
+Cflags: -I${includedir}

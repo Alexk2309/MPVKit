@@ -1,0 +1,14 @@
+prefix=/path/to/workdir/FFmpeg/ios/thin/arm64
+exec_prefix=${prefix}
+libdir=/path/to/workdir/FFmpeg/ios/thin/arm64/lib
+includedir=/path/to/workdir/FFmpeg/ios/thin/arm64/include
+
+Name: libswresample
+Description: FFmpeg audio resampling library
+Version: 5.3.100
+Requires: libavutil >= 59.39.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lswresample -lm
+Libs.private: 
+Cflags: -I${includedir}
