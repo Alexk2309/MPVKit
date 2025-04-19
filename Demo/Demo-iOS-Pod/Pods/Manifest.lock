@@ -1,0 +1,16 @@
+PODS:
+  - MPVKit-Local (0.40.0)
+
+DEPENDENCIES:
+  - MPVKit-Local (from `./LocalPods/MPVKit-Local.podspec`)
+
+EXTERNAL SOURCES:
+  MPVKit-Local:
+    :podspec: "./LocalPods/MPVKit-Local.podspec"
+
+SPEC CHECKSUMS:
+  MPVKit-Local: 2940372d4bcc75ff822da6e1249ac116eb941dc9
+
+PODFILE CHECKSUM: d7c8832f4c5d48c40a910856f6ce02ae788bcaf5
+
+COCOAPODS: 1.16.2

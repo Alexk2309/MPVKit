@@ -27,57 +27,57 @@ Pod::Spec.new do |s|
       # All frameworks in a single array
       mpv.vendored_frameworks = [
         # Core MPV framework
-        'Frameworks/Libmpv.xcframework',
+        'Sources/Libmpv.xcframework',
 
         # FFmpeg components
-        'Frameworks/Libavcodec.xcframework',
-        'Frameworks/Libavfilter.xcframework',
-        'Frameworks/Libavformat.xcframework',
-        'Frameworks/Libavutil.xcframework',
-        'Frameworks/Libswresample.xcframework',
-        'Frameworks/Libswscale.xcframework',
-        'Frameworks/Libavdevice.xcframework',
+        'Sources/Libavcodec.xcframework',
+        'Sources/Libavfilter.xcframework',
+        'Sources/Libavformat.xcframework',
+        'Sources/Libavutil.xcframework',
+        'Sources/Libswresample.xcframework',
+        'Sources/Libswscale.xcframework',
+        'Sources/Libavdevice.xcframework',
 
         # SSL/Crypto
-        'Frameworks/Libcrypto.xcframework',
-        'Frameworks/Libssl.xcframework',
+        'Sources/Libcrypto.xcframework',
+        'Sources/Libssl.xcframework',
 
         # GnuTLS related
-        'Frameworks/gmp.xcframework',
-        'Frameworks/nettle.xcframework',
-        'Frameworks/hogweed.xcframework',
-        'Frameworks/gnutls.xcframework',
+        'Sources/gmp.xcframework',
+        'Sources/nettle.xcframework',
+        'Sources/hogweed.xcframework',
+        'Sources/gnutls.xcframework',
 
         # Text rendering and fonts
-        'Frameworks/Libass.xcframework',
-        'Frameworks/Libfreetype.xcframework',
-        'Frameworks/Libfribidi.xcframework',
-        'Frameworks/Libharfbuzz.xcframework',
-        'Frameworks/Libunibreak.xcframework',
-        'Frameworks/libfontconfig.xcframework',
+        'Sources/Libass.xcframework',
+        'Sources/Libfreetype.xcframework',
+        'Sources/Libfribidi.xcframework',
+        'Sources/Libharfbuzz.xcframework',
+        'Sources/Libunibreak.xcframework',
+        'Sources/libfontconfig.xcframework',
 
         # Graphics and video processing
-        'Frameworks/MoltenVK.xcframework',
-        'Frameworks/Libshaderc_combined.xcframework',
-        'Frameworks/lcms2.xcframework',
-        'Frameworks/Libplacebo.xcframework',
-        'Frameworks/Libdav1d.xcframework',
-        'Frameworks/Libdovi.xcframework',
+        'Sources/MoltenVK.xcframework',
+        'Sources/Libshaderc_combined.xcframework',
+        'Sources/lcms2.xcframework',
+        'Sources/Libplacebo.xcframework',
+        'Sources/Libdav1d.xcframework',
+        'Sources/Libdovi.xcframework',
 
         # Character encoding detection
-        'Frameworks/Libuchardet.xcframework',
+        'Sources/Libuchardet.xcframework',
 
         # Various media support
-        'Frameworks/Libsmbclient.xcframework',
-        'Frameworks/libzvbi.xcframework',
-        'Frameworks/libsrt.xcframework',
-        'Frameworks/Libuavs3d.xcframework'
+        'Sources/Libsmbclient.xcframework',
+        'Sources/libzvbi.xcframework',
+        'Sources/libsrt.xcframework',
+        'Sources/Libuavs3d.xcframework'
       ]
 
       # macOS specific
       mpv.osx.vendored_frameworks = [
-        'Frameworks/Libbluray.xcframework',
-        'Frameworks/Libluajit.xcframework'
+        'Sources/Libbluray.xcframework',
+        'Sources/Libluajit.xcframework'
       ]
   end
 
@@ -90,47 +90,47 @@ Pod::Spec.new do |s|
       # All frameworks in a single array
       gpl.vendored_frameworks = [
         # Core MPV framework (GPL version)
-        'Frameworks/Libmpv-GPL.xcframework',
+        'Sources/Libmpv-GPL.xcframework',
 
         # FFmpeg components (GPL versions)
-        'Frameworks/Libavcodec-GPL.xcframework',
-        'Frameworks/Libavfilter-GPL.xcframework',
-        'Frameworks/Libavformat-GPL.xcframework',
-        'Frameworks/Libavutil-GPL.xcframework',
-        'Frameworks/Libswresample-GPL.xcframework',
-        'Frameworks/Libswscale-GPL.xcframework',
-        'Frameworks/Libavdevice-GPL.xcframework',
+        'Sources/Libavcodec-GPL.xcframework',
+        'Sources/Libavfilter-GPL.xcframework',
+        'Sources/Libavformat-GPL.xcframework',
+        'Sources/Libavutil-GPL.xcframework',
+        'Sources/Libswresample-GPL.xcframework',
+        'Sources/Libswscale-GPL.xcframework',
+        'Sources/Libavdevice-GPL.xcframework',
 
         # All the same dependencies as the regular version
-        'Frameworks/Libcrypto.xcframework',
-        'Frameworks/Libssl.xcframework',
-        'Frameworks/gmp.xcframework',
-        'Frameworks/nettle.xcframework',
-        'Frameworks/hogweed.xcframework',
-        'Frameworks/gnutls.xcframework',
-        'Frameworks/Libass.xcframework',
-        'Frameworks/Libfreetype.xcframework',
-        'Frameworks/Libfribidi.xcframework',
-        'Frameworks/Libharfbuzz.xcframework',
-        'Frameworks/Libunibreak.xcframework',
-        'Frameworks/libfontconfig.xcframework',
-        'Frameworks/MoltenVK.xcframework',
-        'Frameworks/Libshaderc_combined.xcframework',
-        'Frameworks/lcms2.xcframework',
-        'Frameworks/Libplacebo.xcframework',
-        'Frameworks/Libdav1d.xcframework',
-        'Frameworks/Libdovi.xcframework',
-        'Frameworks/Libuchardet.xcframework',
-        'Frameworks/Libsmbclient.xcframework',
-        'Frameworks/libzvbi.xcframework',
-        'Frameworks/libsrt.xcframework',
-        'Frameworks/Libuavs3d.xcframework'
+        'Sources/Libcrypto.xcframework',
+        'Sources/Libssl.xcframework',
+        'Sources/gmp.xcframework',
+        'Sources/nettle.xcframework',
+        'Sources/hogweed.xcframework',
+        'Sources/gnutls.xcframework',
+        'Sources/Libass.xcframework',
+        'Sources/Libfreetype.xcframework',
+        'Sources/Libfribidi.xcframework',
+        'Sources/Libharfbuzz.xcframework',
+        'Sources/Libunibreak.xcframework',
+        'Sources/libfontconfig.xcframework',
+        'Sources/MoltenVK.xcframework',
+        'Sources/Libshaderc_combined.xcframework',
+        'Sources/lcms2.xcframework',
+        'Sources/Libplacebo.xcframework',
+        'Sources/Libdav1d.xcframework',
+        'Sources/Libdovi.xcframework',
+        'Sources/Libuchardet.xcframework',
+        'Sources/Libsmbclient.xcframework',
+        'Sources/libzvbi.xcframework',
+        'Sources/libsrt.xcframework',
+        'Sources/Libuavs3d.xcframework'
       ]
 
       # macOS specific
       gpl.osx.vendored_frameworks = [
-        'Frameworks/Libbluray.xcframework',
-        'Frameworks/Libluajit.xcframework'
+        'Sources/Libbluray.xcframework',
+        'Sources/Libluajit.xcframework'
       ]
   end
 
