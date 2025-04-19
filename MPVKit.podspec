@@ -17,7 +17,7 @@ Pod::Spec.new do |s|
   s.tvos.deployment_target = '13.0'
   s.default_subspec = 'MPVKit'
   s.static_framework = true
-  s.source_files = 'Sources/_MPVKit/**/*.{h,c,m}'
+  s.source_files = 'Sources/**/*.{h,c,m}'
 
   s.subspec 'MPVKit' do |mpv|
       mpv.libraries   = 'bz2', 'c++', 'iconv', 'resolv', 'xml2', 'z'
