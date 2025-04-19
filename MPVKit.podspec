@@ -71,7 +71,7 @@ Pod::Spec.new do |s|
         'Sources/Libsmbclient.xcframework',
         'Sources/libzvbi.xcframework',
         'Sources/libsrt.xcframework',
-        'Sources/Libuavs3d.xcframework'
+        'Sources/Libuavs3d.xcframework',
         'Sources/Libbluray.xcframework',
       ]
 
@@ -124,7 +124,7 @@ Pod::Spec.new do |s|
         'Sources/Libsmbclient.xcframework',
         'Sources/libzvbi.xcframework',
         'Sources/libsrt.xcframework',
-        'Sources/Libuavs3d.xcframework'
+        'Sources/Libuavs3d.xcframework',
         'Sources/Libbluray.xcframework',
       ]
 
