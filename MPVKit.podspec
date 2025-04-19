@@ -72,11 +72,11 @@ Pod::Spec.new do |s|
         'Sources/libzvbi.xcframework',
         'Sources/libsrt.xcframework',
         'Sources/Libuavs3d.xcframework'
+        'Sources/Libbluray.xcframework',
       ]
 
       # macOS specific
       mpv.osx.vendored_frameworks = [
-        'Sources/Libbluray.xcframework',
         'Sources/Libluajit.xcframework'
       ]
   end
@@ -125,11 +125,11 @@ Pod::Spec.new do |s|
         'Sources/libzvbi.xcframework',
         'Sources/libsrt.xcframework',
         'Sources/Libuavs3d.xcframework'
+        'Sources/Libbluray.xcframework',
       ]
 
       # macOS specific
       gpl.osx.vendored_frameworks = [
-        'Sources/Libbluray.xcframework',
         'Sources/Libluajit.xcframework'
       ]
   end
