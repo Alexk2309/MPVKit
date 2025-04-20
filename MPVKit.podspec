@@ -7,17 +7,18 @@ Pod::Spec.new do |s|
   MPV Player for iOS and macOS
   DESC
 
-  s.homepage         = 'https://github.com/Alexk2309/MPVKit.git'
-  s.authors          = { 'alexkim' => 'alexkim5682@gmail.com' }
+  s.homepage         = 'https://github.com/mpvkit/MPVKit'
+  s.authors          = { 'alexkim' => 'yourmail@example.com' }
   s.license          = 'MIT'
-  s.source           = { :git => 'https://github.com/Alexk2309/MPVKit.git', :tag => s.version.to_s }
+  s.source           = { :git => 'https://github.com/mpvkit/MPVKit.git', :tag => s.version.to_s }
 
   s.ios.deployment_target = '13.0'
   s.osx.deployment_target = '10.15'
   s.tvos.deployment_target = '13.0'
   s.default_subspec = 'MPVKit'
   s.static_framework = true
-  s.source_files = 'Sources/**/*.{h,c,m}'
+  s.source_files = 'Sources/_MPVKit/**/*.{h,c,m}'
+
 
   s.subspec 'MPVKit' do |mpv|
       mpv.libraries   = 'bz2', 'c++', 'iconv', 'resolv', 'xml2', 'z'
@@ -27,7 +28,7 @@ Pod::Spec.new do |s|
       # All frameworks in a single array
       mpv.vendored_frameworks = [
         # Core MPV framework
-        'Sources/Libmpv.xcframework',
+        'Frameworks/Libmpv.xcframework',
 
         # FFmpeg components
         'Frameworks/Libavcodec.xcframework',
@@ -71,7 +72,7 @@ Pod::Spec.new do |s|
         'Frameworks/Libsmbclient.xcframework',
         'Frameworks/libzvbi.xcframework',
         'Frameworks/libsrt.xcframework',
-        'Frameworks/Libuavs3d.xcframework',
+        'Frameworks/Libuavs3d.xcframework'
         'Frameworks/Libbluray.xcframework',
       ]
 
@@ -134,6 +135,4 @@ Pod::Spec.new do |s|
       ]
   end
 
-  # Preserve paths for all frameworks
-  s.preserve_paths = 'Frameworks/**/*'
 end
