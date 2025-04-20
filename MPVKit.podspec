@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'MPVKit'
-  s.version          = '0.40.1'
+  s.version          = '0.40.2'
   s.summary          = 'MPVKit'
 
   s.description      = <<-DESC
