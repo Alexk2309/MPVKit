@@ -55,7 +55,6 @@ Pod::Spec.new do |s|
         'Frameworks/Libfribidi.xcframework',
         'Frameworks/Libharfbuzz.xcframework',
         'Frameworks/Libunibreak.xcframework',
-        'Frameworks/libfontconfig.xcframework',
 
         # Graphics and video processing
         'Frameworks/MoltenVK.xcframework',
@@ -70,8 +69,6 @@ Pod::Spec.new do |s|
 
         # Various media support
         'Frameworks/Libsmbclient.xcframework',
-        'Frameworks/libzvbi.xcframework',
-        'Frameworks/libsrt.xcframework',
         'Frameworks/Libuavs3d.xcframework',
         'Frameworks/Libbluray.xcframework',
       ]
@@ -114,7 +111,7 @@ Pod::Spec.new do |s|
         'Frameworks/Libfribidi.xcframework',
         'Frameworks/Libharfbuzz.xcframework',
         'Frameworks/Libunibreak.xcframework',
-        'Frameworks/libfontconfig.xcframework',
+
         'Frameworks/MoltenVK.xcframework',
         'Frameworks/Libshaderc_combined.xcframework',
         'Frameworks/lcms2.xcframework',
@@ -123,8 +120,6 @@ Pod::Spec.new do |s|
         'Frameworks/Libdovi.xcframework',
         'Frameworks/Libuchardet.xcframework',
         'Frameworks/Libsmbclient.xcframework',
-        'Frameworks/libzvbi.xcframework',
-        'Frameworks/libsrt.xcframework',
         'Frameworks/Libuavs3d.xcframework',
         'Frameworks/Libbluray.xcframework'
       ]
