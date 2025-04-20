@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'MPVKit'
-  s.version          = '0.40.4'
+  s.version          = '0.40.5'
   s.summary          = 'MPVKit'
 
   s.description      = <<-DESC
@@ -22,10 +22,10 @@ Pod::Spec.new do |s|
   s.subspec 'SharedDeps' do |shared|
     # Common frameworks
     shared.frameworks = 'AudioToolbox', 'CoreVideo', 'CoreFoundation', 'CoreMedia', 'Metal', 'VideoToolbox'
-    
+
     # Common libraries
     shared.libraries = 'bz2', 'iconv', 'expat', 'resolv', 'xml2', 'z', 'c++'
-    
+
     # Common frameworks used by both FFmpeg and FFmpeg-GPL
     shared.vendored_frameworks = [
       # SSL/Crypto
@@ -78,18 +78,17 @@ Pod::Spec.new do |s|
   # FFmpeg-GPL subspec that contains all GPL dependencies
   s.subspec 'FFmpeg-GPL' do |ffmpeg_gpl|
     ffmpeg_gpl.dependency 'MPVKit/SharedDeps'
-    
+
     # FFmpeg GPL components in exact same order as Package.swift
     ffmpeg_gpl.vendored_frameworks = [
       # Core FFmpeg components in Package.swift order
-      'Frameworks/GPL/Libavcodec.xcframework',
-      'Frameworks/GPL/Libavdevice.xcframework',
-      'Frameworks/GPL/Libavfilter.xcframework',
-      'Frameworks/GPL/Libavformat.xcframework',
-      'Frameworks/GPL/Libavutil.xcframework',
-      'Frameworks/GPL/Libswresample.xcframework',
-      'Frameworks/GPL/Libswscale.xcframework',
-      
+      'Frameworks/GPL/Libavcodec-GPL.xcframework',
+      'Frameworks/GPL/Libavdevice-GPL.xcframework',
+      'Frameworks/GPL/Libavfilter-GPL.xcframework',
+      'Frameworks/GPL/Libavformat-GPL.xcframework',
+      'Frameworks/GPL/Libavutil-GPL.xcframework',
+      'Frameworks/GPL/Libswresample-GPL.xcframework',
+      'Frameworks/GPL/Libswscale-GPL.xcframework',
       # Additional GPL-only frameworks
       'Frameworks/GPL/Libsmbclient.xcframework',
     ]
@@ -120,7 +119,7 @@ Pod::Spec.new do |s|
 
     # Core MPV framework (GPL version)
     gpl.vendored_frameworks = [
-      'Frameworks/GPL/Libmpv.xcframework',
+      'Frameworks/GPL/Libmpv-GPL.xcframework',
       'Frameworks/Libuchardet.xcframework',
       'Frameworks/Libbluray.xcframework',
     ]
