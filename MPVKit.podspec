@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'MPVKit'
-  s.version          = '0.40.5'
+  s.version          = '0.40.2'
   s.summary          = 'MPVKit'
 
   s.description      = <<-DESC
@@ -53,7 +53,6 @@ Pod::Spec.new do |s|
       'Frameworks/gnutls.xcframework',
 
       # Video codecs
-      'Frameworks/Libdav1d.xcframework',
       'Frameworks/Libuavs3d.xcframework',
     ]
   end
@@ -61,7 +60,7 @@ Pod::Spec.new do |s|
   # FFmpeg subspec that contains all dependencies
   s.subspec 'FFmpeg' do |ffmpeg|
     ffmpeg.dependency 'MPVKit/SharedDeps'
-    
+
     # FFmpeg components in exact same order as Package.swift
     ffmpeg.vendored_frameworks = [
       # Core FFmpeg components in Package.swift order
@@ -82,13 +81,13 @@ Pod::Spec.new do |s|
     # FFmpeg GPL components in exact same order as Package.swift
     ffmpeg_gpl.vendored_frameworks = [
       # Core FFmpeg components in Package.swift order
-      'Frameworks/GPL/Libavcodec-GPL.xcframework',
-      'Frameworks/GPL/Libavdevice-GPL.xcframework',
-      'Frameworks/GPL/Libavfilter-GPL.xcframework',
-      'Frameworks/GPL/Libavformat-GPL.xcframework',
-      'Frameworks/GPL/Libavutil-GPL.xcframework',
-      'Frameworks/GPL/Libswresample-GPL.xcframework',
-      'Frameworks/GPL/Libswscale-GPL.xcframework',
+      'Frameworks/GPL/Libavcodec.xcframework',
+      'Frameworks/GPL/Libavdevice.xcframework',
+      'Frameworks/GPL/Libavfilter.xcframework',
+      'Frameworks/GPL/Libavformat.xcframework',
+      'Frameworks/GPL/Libavutil.xcframework',
+      'Frameworks/GPL/Libswresample.xcframework',
+      'Frameworks/GPL/Libswscale.xcframework',
       # Additional GPL-only frameworks
       'Frameworks/GPL/Libsmbclient.xcframework',
     ]
@@ -119,7 +118,7 @@ Pod::Spec.new do |s|
 
     # Core MPV framework (GPL version)
     gpl.vendored_frameworks = [
-      'Frameworks/GPL/Libmpv-GPL.xcframework',
+      'Frameworks/GPL/Libmpv.xcframework',
       'Frameworks/Libuchardet.xcframework',
       'Frameworks/Libbluray.xcframework',
     ]
