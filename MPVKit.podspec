@@ -38,6 +38,34 @@ Pod::Spec.new do |s|
       'Frameworks/Libavutil.xcframework',
       'Frameworks/Libswresample.xcframework',
       'Frameworks/Libswscale.xcframework',
+
+      # SSL/Crypto
+      'Frameworks/Libssl.xcframework',
+      'Frameworks/Libcrypto.xcframework',
+
+      # Text rendering and fonts
+      'Frameworks/Libass.xcframework',
+      'Frameworks/Libfreetype.xcframework',
+      'Frameworks/Libfribidi.xcframework',
+      'Frameworks/Libharfbuzz.xcframework',
+
+      # Graphics and video processing
+      'Frameworks/MoltenVK.xcframework',
+      'Frameworks/Libshaderc_combined.xcframework',
+      'Frameworks/lcms2.xcframework',
+      'Frameworks/Libplacebo.xcframework',
+      'Frameworks/Libdovi.xcframework',
+      'Frameworks/Libunibreak.xcframework',
+
+      # GnuTLS related
+      'Frameworks/gmp.xcframework',
+      'Frameworks/nettle.xcframework',
+      'Frameworks/hogweed.xcframework',
+      'Frameworks/gnutls.xcframework',
+
+      # Video codecs
+      'Frameworks/Libdav1d.xcframework',
+      'Frameworks/Libuavs3d.xcframework',
     ]
   end
 
