@@ -72,7 +72,7 @@ Pod::Spec.new do |s|
         'Frameworks/Libsmbclient.xcframework',
         'Frameworks/libzvbi.xcframework',
         'Frameworks/libsrt.xcframework',
-        'Frameworks/Libuavs3d.xcframework'
+        'Frameworks/Libuavs3d.xcframework',
         'Frameworks/Libbluray.xcframework',
       ]
 
@@ -126,7 +126,7 @@ Pod::Spec.new do |s|
         'Frameworks/libzvbi.xcframework',
         'Frameworks/libsrt.xcframework',
         'Frameworks/Libuavs3d.xcframework',
-        'Frameworks/Libbluray.xcframework',
+        'Frameworks/Libbluray.xcframework'
       ]
 
       # macOS specific
