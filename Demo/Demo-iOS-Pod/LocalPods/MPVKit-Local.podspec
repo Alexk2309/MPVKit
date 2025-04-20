@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'MPVKit-Local'
-  s.version          = '0.40.0'
+  s.version          = '0.40.4'
   s.summary          = 'MPVKit local build for direct linking'
   s.description      = <<-DESC
   Local MPV Player library for iOS and macOS that mimics the SPM structure
@@ -21,9 +21,29 @@ Pod::Spec.new do |s|
   s.libraries = 'bz2', 'c++', 'iconv', 'resolv', 'xml2', 'z'
   s.frameworks = 'AudioToolbox', 'AVFoundation', 'CoreMedia', 'VideoToolbox'
 
-  # Direct xcframework references to match SPM
+  # Shared dependencies
   s.vendored_frameworks = [
-    '../../../dist/release/xcframework/Libmpv.xcframework',
+    # SSL/Crypto
+    '../../../Frameworks/Libcrypto.xcframework',
+    '../../../Frameworks/Libssl.xcframework',
+    
+    # GnuTLS related
+    '../../../Frameworks/gmp.xcframework',
+    '../../../Frameworks/nettle.xcframework',
+    '../../../Frameworks/hogweed.xcframework',
+    '../../../Frameworks/gnutls.xcframework',
+    
+    # Text rendering and fonts
+    '../../../Frameworks/Libass.xcframework',
+    '../../../Frameworks/Libfreetype.xcframework',
+    '../../../Frameworks/Libfribidi.xcframework',
+    '../../../Frameworks/Libharfbuzz.xcframework',
+    '../../../Frameworks/Libunibreak.xcframework',
+    
+    # Video codecs
+    '../../../Frameworks/Libdav1d.xcframework',
+    
+    # FFmpeg components
     '../../../Frameworks/Libavcodec.xcframework',
     '../../../Frameworks/Libavfilter.xcframework',
     '../../../Frameworks/Libavformat.xcframework',
@@ -31,17 +51,9 @@ Pod::Spec.new do |s|
     '../../../Frameworks/Libswresample.xcframework',
     '../../../Frameworks/Libswscale.xcframework',
     '../../../Frameworks/Libavdevice.xcframework',
-    '../../../Frameworks/Libcrypto.xcframework',
-    '../../../Frameworks/Libssl.xcframework',
-    '../../../Frameworks/gmp.xcframework',
-    '../../../Frameworks/nettle.xcframework',
-    '../../../Frameworks/hogweed.xcframework',
-    '../../../Frameworks/gnutls.xcframework',
-    '../../../Frameworks/Libass.xcframework',
-    '../../../Frameworks/Libfreetype.xcframework',
-    '../../../Frameworks/Libfribidi.xcframework',
-    '../../../Frameworks/Libharfbuzz.xcframework',
-    '../../../Frameworks/Libunibreak.xcframework',
+    
+    # MPV core
+    '../../../dist/release/xcframework/Libmpv.xcframework',
   ]
 
   # Preserve paths to match SPM

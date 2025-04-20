@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'MPVKit'
-  s.version          = '0.40.2'
+  s.version          = '0.40.4'
   s.summary          = 'MPVKit'
 
   s.description      = <<-DESC
@@ -18,25 +18,16 @@ Pod::Spec.new do |s|
   s.static_framework = true
   s.source_files = 'Sources/_MPVKit/**/*.{h,c,m}'
 
-  # FFmpeg subspec that contains all dependencies
-  s.subspec 'FFmpeg' do |ffmpeg|
-    # These match the frameworks from Package.swift
-    ffmpeg.frameworks = 'AudioToolbox', 'CoreVideo', 'CoreFoundation', 'CoreMedia', 'Metal', 'VideoToolbox'
-
-    # These match the libraries from Package.swift
-    ffmpeg.libraries = 'bz2', 'iconv', 'expat', 'resolv', 'xml2', 'z', 'c++'
-
-    # FFmpeg components in exact same order as Package.swift
-    ffmpeg.vendored_frameworks = [
-      # Core FFmpeg components in Package.swift order
-      'Frameworks/Libavcodec.xcframework',
-      'Frameworks/Libavdevice.xcframework',
-      'Frameworks/Libavfilter.xcframework',
-      'Frameworks/Libavformat.xcframework',
-      'Frameworks/Libavutil.xcframework',
-      'Frameworks/Libswresample.xcframework',
-      'Frameworks/Libswscale.xcframework',
-
+  # Shared dependencies subspec for common frameworks and libraries
+  s.subspec 'SharedDeps' do |shared|
+    # Common frameworks
+    shared.frameworks = 'AudioToolbox', 'CoreVideo', 'CoreFoundation', 'CoreMedia', 'Metal', 'VideoToolbox'
+    
+    # Common libraries
+    shared.libraries = 'bz2', 'iconv', 'expat', 'resolv', 'xml2', 'z', 'c++'
+    
+    # Common frameworks used by both FFmpeg and FFmpeg-GPL
+    shared.vendored_frameworks = [
       # SSL/Crypto
       'Frameworks/Libssl.xcframework',
       'Frameworks/Libcrypto.xcframework',
@@ -67,15 +58,27 @@ Pod::Spec.new do |s|
     ]
   end
 
+  # FFmpeg subspec that contains all dependencies
+  s.subspec 'FFmpeg' do |ffmpeg|
+    ffmpeg.dependency 'MPVKit/SharedDeps'
+    
+    # FFmpeg components in exact same order as Package.swift
+    ffmpeg.vendored_frameworks = [
+      # Core FFmpeg components in Package.swift order
+      'Frameworks/Libavcodec.xcframework',
+      'Frameworks/Libavdevice.xcframework',
+      'Frameworks/Libavfilter.xcframework',
+      'Frameworks/Libavformat.xcframework',
+      'Frameworks/Libavutil.xcframework',
+      'Frameworks/Libswresample.xcframework',
+      'Frameworks/Libswscale.xcframework',
+    ]
+  end
+
   # FFmpeg-GPL subspec that contains all GPL dependencies
   s.subspec 'FFmpeg-GPL' do |ffmpeg_gpl|
-    # These match the frameworks from Package.swift
-    ffmpeg_gpl.frameworks = 'AudioToolbox', 'CoreVideo', 'CoreFoundation', 'CoreMedia', 'Metal', 'VideoToolbox'
-
-    # These match the libraries from Package.swift
-    ffmpeg_gpl.libraries = 'bz2', 'iconv', 'expat', 'resolv', 'xml2', 'z', 'c++'
-
-
+    ffmpeg_gpl.dependency 'MPVKit/SharedDeps'
+    
     # FFmpeg GPL components in exact same order as Package.swift
     ffmpeg_gpl.vendored_frameworks = [
       # Core FFmpeg components in Package.swift order
@@ -86,35 +89,7 @@ Pod::Spec.new do |s|
       'Frameworks/GPL/Libavutil.xcframework',
       'Frameworks/GPL/Libswresample.xcframework',
       'Frameworks/GPL/Libswscale.xcframework',
-
-      # SSL/Crypto
-      'Frameworks/Libssl.xcframework',
-      'Frameworks/Libcrypto.xcframework',
-
-      # Text rendering and fonts
-      'Frameworks/Libass.xcframework',
-      'Frameworks/Libfreetype.xcframework',
-      'Frameworks/Libfribidi.xcframework',
-      'Frameworks/Libharfbuzz.xcframework',
-
-      # Graphics and video processing
-      'Frameworks/MoltenVK.xcframework',
-      'Frameworks/Libshaderc_combined.xcframework',
-      'Frameworks/lcms2.xcframework',
-      'Frameworks/Libplacebo.xcframework',
-      'Frameworks/Libdovi.xcframework',
-      'Frameworks/Libunibreak.xcframework',
-
-      # GnuTLS related
-      'Frameworks/gmp.xcframework',
-      'Frameworks/nettle.xcframework',
-      'Frameworks/hogweed.xcframework',
-      'Frameworks/gnutls.xcframework',
-
-      # Video codecs
-      'Frameworks/Libdav1d.xcframework',
-      'Frameworks/Libuavs3d.xcframework',
-
+      
       # Additional GPL-only frameworks
       'Frameworks/GPL/Libsmbclient.xcframework',
     ]
