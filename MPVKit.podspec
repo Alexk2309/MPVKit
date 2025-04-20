@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'MPVKit'
-  s.version          = '0.40.2'
+  s.version          = '0.40.5'
   s.summary          = 'MPVKit'
 
   s.description      = <<-DESC
@@ -87,7 +87,7 @@ Pod::Spec.new do |s|
       'Frameworks/GPL/Libavformat.xcframework',
       'Frameworks/GPL/Libavutil.xcframework',
       'Frameworks/GPL/Libswresample.xcframework',
-      'Frameworks/GPL/Libswscale.xcframework',
+      'Frameworks/GPL/Libswscale-GPL.xcframework',
       # Additional GPL-only frameworks
       'Frameworks/GPL/Libsmbclient.xcframework',
     ]
