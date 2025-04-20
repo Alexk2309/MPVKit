@@ -88,4 +88,4 @@ download_framework "Libdav1d" "https://github.com/mpvkit/libdav1d-build/releases
 download_framework "Libuchardet" "https://github.com/mpvkit/libuchardet-build/releases/download/0.0.8/Libuchardet.xcframework.zip"
 download_framework "Libluajit" "https://github.com/mpvkit/libluajit-build/releases/download/2.1.0/Libluajit.xcframework.zip"
 
-echo "All frameworks have been downloaded and extracted to the Frameworks directory." 
+echo "All frameworks have been downloaded and extracted to the Frameworks directory."

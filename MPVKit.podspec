@@ -13,7 +13,6 @@ Pod::Spec.new do |s|
   s.source           = { :git => 'https://github.com/alexk2309/MPVKit.git', :tag => s.version.to_s }
 
   s.ios.deployment_target = '13.0'
-  s.osx.deployment_target = '10.15'
   s.tvos.deployment_target = '13.0'
   s.default_subspec = 'MPVKit'
   s.static_framework = true
@@ -26,7 +25,6 @@ Pod::Spec.new do |s|
 
     # These match the libraries from Package.swift
     ffmpeg.libraries = 'bz2', 'iconv', 'expat', 'resolv', 'xml2', 'z', 'c++'
-
 
     # FFmpeg components in exact same order as Package.swift
     ffmpeg.vendored_frameworks = [
@@ -81,13 +79,13 @@ Pod::Spec.new do |s|
     # FFmpeg GPL components in exact same order as Package.swift
     ffmpeg_gpl.vendored_frameworks = [
       # Core FFmpeg components in Package.swift order
-      'Frameworks/Libavcodec-GPL.xcframework',
-      'Frameworks/Libavdevice-GPL.xcframework',
-      'Frameworks/Libavfilter-GPL.xcframework',
-      'Frameworks/Libavformat-GPL.xcframework',
-      'Frameworks/Libavutil-GPL.xcframework',
-      'Frameworks/Libswresample-GPL.xcframework',
-      'Frameworks/Libswscale-GPL.xcframework',
+      'Frameworks/GPL/Libavcodec.xcframework',
+      'Frameworks/GPL/Libavdevice.xcframework',
+      'Frameworks/GPL/Libavfilter.xcframework',
+      'Frameworks/GPL/Libavformat.xcframework',
+      'Frameworks/GPL/Libavutil.xcframework',
+      'Frameworks/GPL/Libswresample.xcframework',
+      'Frameworks/GPL/Libswscale.xcframework',
 
       # SSL/Crypto
       'Frameworks/Libssl.xcframework',
@@ -118,7 +116,7 @@ Pod::Spec.new do |s|
       'Frameworks/Libuavs3d.xcframework',
 
       # Additional GPL-only frameworks
-      'Frameworks/Libsmbclient.xcframework',
+      'Frameworks/GPL/Libsmbclient.xcframework',
     ]
   end
 
@@ -147,7 +145,7 @@ Pod::Spec.new do |s|
 
     # Core MPV framework (GPL version)
     gpl.vendored_frameworks = [
-      'Frameworks/Libmpv-GPL.xcframework',
+      'Frameworks/GPL/Libmpv.xcframework',
       'Frameworks/Libuchardet.xcframework',
       'Frameworks/Libbluray.xcframework',
     ]
