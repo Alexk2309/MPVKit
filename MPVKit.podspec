@@ -8,9 +8,9 @@ Pod::Spec.new do |s|
   DESC
 
   s.homepage         = 'https://github.com/mpvkit/MPVKit'
-  s.authors          = { 'alexkim' => 'yourmail@example.com' }
+  s.authors          = { 'alexkim' => 'alexkim5682@gmail.com' }
   s.license          = 'MIT'
-  s.source           = { :git => 'https://github.com/mpvkit/MPVKit.git', :tag => s.version.to_s }
+  s.source           = { :git => 'https://github.com/alexk2309/MPVKit.git', :tag => s.version.to_s }
 
   s.ios.deployment_target = '13.0'
   s.osx.deployment_target = '10.15'
