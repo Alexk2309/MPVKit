@@ -12,8 +12,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # GitHub release settings (must match the URL in Package.swift)
-GITHUB_REPO="mpv-ios/MPVKit"
-GITHUB_TAG="${1:-0.41.0-av}"
+GITHUB_REPO="streamyfin/MPVKit"
+GITHUB_TAG="${1:-0.41.0-av2}"
 RELEASE_ZIP_NAME="MPVKit.xcframework.zip"
 
 # Source zip location (produced by create-combined-framework.sh)

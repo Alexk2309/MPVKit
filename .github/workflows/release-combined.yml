@@ -1,0 +1,65 @@
+name: Build combined MPVKit and release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release tag name'
+        default: '0.41.0-av2'
+  push:
+    branches:
+      - avfoundation-ao-tvos
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    runs-on: macos-26
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve release version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          VERSION="$INPUT_VERSION"
+          if [ -z "$VERSION" ]; then
+            VERSION="0.41.0-av2"
+          fi
+          echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: |
+          brew install autoconf automake libtool ninja
+          pipx install meson==1.4.2
+
+      - name: Show Xcode version
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
+
+      - name: Build GPL version (iOS + tvOS)
+        run: make build enable-gpl platform=ios,isimulator,tvos,tvsimulator version="$RELEASE_VERSION"
+
+      - name: Create combined MPVKit.xcframework
+        run: ./Sources/BuildScripts/create-combined-framework.sh
+
+      - name: Upload binary to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ env.RELEASE_VERSION }}
+          tag_name: ${{ env.RELEASE_VERSION }}
+          target_commitish: ${{ github.sha }}
+          files: dist/MPVKit-combined/MPVKit.xcframework.zip
+          prerelease: true
+          fail_on_unmatched_files: true
+          body: |
+            Combined MPVKit.xcframework (GPL) for iOS/tvOS.
+
+            * vo_avfoundation video output (PiP, composite OSD, VideoToolbox, HDR/DV)
+            * avfoundation audio output (AVSampleBufferAudioRenderer) now built for
+              iOS/tvOS (port of mpvkit/MPVKit#73) — fixes silent playback on HDMI
+              routes that report 32 channels with Atmos "Continuous Audio Output".
+              audiounit stays the default AO; opt in with ao=avfoundation,audiounit.
+            * mpv v0.41.0, FFmpeg n8.1
