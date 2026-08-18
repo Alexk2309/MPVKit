@@ -5,7 +5,7 @@ on:
     inputs:
       version:
         description: 'Release tag name'
-        default: '0.41.0-av2'
+        default: '0.41.0-av3'
   push:
     branches:
       - avfoundation-ao-tvos
@@ -25,7 +25,7 @@ jobs:
         run: |
           VERSION="$INPUT_VERSION"
           if [ -z "$VERSION" ]; then
-            VERSION="0.41.0-av2"
+            VERSION="0.41.0-av3"
           fi
           echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
 
@@ -58,8 +58,11 @@ jobs:
             Combined MPVKit.xcframework (GPL) for iOS/tvOS.
 
             * vo_avfoundation video output (PiP, composite OSD, VideoToolbox, HDR/DV)
-            * avfoundation audio output (AVSampleBufferAudioRenderer) now built for
-              iOS/tvOS (port of mpvkit/MPVKit#73) — fixes silent playback on HDMI
-              routes that report 32 channels with Atmos "Continuous Audio Output".
-              audiounit stays the default AO; opt in with ao=avfoundation,audiounit.
+            * ao_audiounit clamps hardware channel layouts it cannot map to mp
+              speaker IDs, instead of building an invalid chmap and playing
+              silence. Fixes HDMI routes that report 32 discrete channels with
+              Atmos "Continuous Audio Output".
+            * avfoundation audio output is still built but should NOT be used on
+              tvOS: its clock carries no device-latency term, which stutters
+              video over HDMI. audiounit is the default and the right choice.
             * mpv v0.41.0, FFmpeg n8.1

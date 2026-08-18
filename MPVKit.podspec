@@ -1,19 +1,21 @@
 Pod::Spec.new do |s|
   s.name             = 'MPVKit'
-  s.version          = '0.41.0-av2'
+  s.version          = '0.41.0-av3'
   s.summary          = 'MPVKit with AVFoundation video and audio output for iOS/tvOS'
   s.description      = <<-DESC
     MPVKit fork with AVFoundation video output (vo_avfoundation) support.
     Features Picture-in-Picture, hardware-accelerated VideoToolbox decoding,
     composite OSD for subtitles, and HDR/Dolby Vision support.
     Also builds the avfoundation audio output (AVSampleBufferAudioRenderer)
-    for iOS/tvOS, for HDMI routes the audiounit AO cannot open.
+    for iOS/tvOS, though audiounit is the only AO fit for real tvOS hardware.
+    audiounit clamps unmappable hardware channel layouts instead of going
+    silent, which fixes HDMI routes reporting 32 discrete channels.
   DESC
 
   s.homepage         = 'https://github.com/streamyfin/MPVKit'
   s.license          = { :type => 'GPL-3.0', :text => 'GPL-3.0. See https://www.gnu.org/licenses/gpl-3.0.html' }
   s.author           = { 'streamyfin' => 'https://github.com/streamyfin' }
-  s.source           = { :http => 'https://github.com/streamyfin/MPVKit/releases/download/0.41.0-av2/MPVKit.xcframework.zip' }
+  s.source           = { :http => 'https://github.com/streamyfin/MPVKit/releases/download/0.41.0-av3/MPVKit.xcframework.zip' }
 
   s.ios.deployment_target  = '14.0'
   s.tvos.deployment_target = '14.0'

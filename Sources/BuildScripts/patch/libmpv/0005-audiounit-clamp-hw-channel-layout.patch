@@ -1,0 +1,58 @@
+diff --git a/audio/out/ao_audiounit.m b/audio/out/ao_audiounit.m
+--- a/audio/out/ao_audiounit.m
++++ b/audio/out/ao_audiounit.m
+@@ -167,12 +167,49 @@
+         ao->channels = (struct mp_chmap)MP_CHMAP_INIT_STEREO;
+         MP_VERBOSE(ao, "using stereo output\n");
+     } else {
+-        ao->channels.num = (uint8_t)layout->mNumberChannelDescriptions;
+-        for (UInt32 i = 0; i < layout->mNumberChannelDescriptions; i++) {
+-          ao->channels.speaker[i] =
+-              ca_label_to_mp_speaker_id(layout->mChannelDescriptions[i].mChannelLabel);
++        // Only trust the hardware layout if every label maps to an mp speaker
++        // ID. ca_label_to_mp_speaker_id() returns -1 for anything it does not
++        // know, which lands in the uint8_t speaker[] as 255 and makes
++        // mp_chmap_is_valid() reject the whole map. mpv can then not build an
++        // audio chain and playback is silent, with no error anywhere. HDMI
++        // routes with Atmos "Continuous Audio Output" hit exactly this: they
++        // report dozens of discrete channels whose labels have no speaker ID.
++        struct mp_chmap hw = {0};
++        int count = (int)layout->mNumberChannelDescriptions;
++        bool mappable = count > 0 && count <= MP_NUM_CHANNELS;
++        for (int i = 0; mappable && i < count; i++) {
++            int speaker_id = ca_label_to_mp_speaker_id(
++                layout->mChannelDescriptions[i].mChannelLabel);
++            if (speaker_id < 0) {
++                mappable = false;
++            } else {
++                hw.speaker[i] = (uint8_t)speaker_id;
++            }
+         }
+-        MP_VERBOSE(ao, "using standard channel mapping\n");
++        if (mappable) {
++            hw.num = count;
++            mappable = mp_chmap_is_valid(&hw);
++        }
++
++        if (mappable) {
++            ao->channels = hw;
++            MP_VERBOSE(ao, "using standard channel mapping\n");
++        } else {
++            // Same fallback ca_get_active_chmap() uses on macOS: stereo up
++            // front and silence in the rest, keeping the hardware channel
++            // count so the format we hand the audio unit still matches it.
++            int num = (int)instance.outputNumberOfChannels;
++            if (num > MP_NUM_CHANNELS)
++                num = MP_NUM_CHANNELS;
++            if (num < 2)
++                num = 2;
++            mp_chmap_from_channels(&ao->channels, 2);
++            ao->channels.num = num;
++            for (int i = 2; i < num; i++)
++                ao->channels.speaker[i] = MP_SPEAKER_ID_NA;
++            MP_WARN(ao, "unmappable hardware channel layout (%d channels) - "
++                    "falling back to %s\n", count, mp_chmap_to_str(&ao->channels));
++        }
+     }
+ 
+     ca_fill_asbd(ao, &asbd);
