@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'MPVKit'
-  s.version          = '0.41.0-av3'
+  s.version          = '0.41.0-av4'
   s.summary          = 'MPVKit with AVFoundation video and audio output for iOS/tvOS'
   s.description      = <<-DESC
     MPVKit fork with AVFoundation video output (vo_avfoundation) support.
@@ -8,14 +8,16 @@ Pod::Spec.new do |s|
     composite OSD for subtitles, and HDR/Dolby Vision support.
     Also builds the avfoundation audio output (AVSampleBufferAudioRenderer)
     for iOS/tvOS, though audiounit is the only AO fit for real tvOS hardware.
-    audiounit clamps unmappable hardware channel layouts instead of going
-    silent, which fixes HDMI routes reporting 32 discrete channels.
+    audiounit no longer fails outright when the audio unit refuses the
+    channel-layout query (tvOS Dolby MAT / "Continuous Audio Connection"
+    routes) - it falls back to stereo - and clamps hardware layouts whose
+    labels mpv cannot map instead of going silent.
   DESC
 
   s.homepage         = 'https://github.com/streamyfin/MPVKit'
   s.license          = { :type => 'GPL-3.0', :text => 'GPL-3.0. See https://www.gnu.org/licenses/gpl-3.0.html' }
   s.author           = { 'streamyfin' => 'https://github.com/streamyfin' }
-  s.source           = { :http => 'https://github.com/streamyfin/MPVKit/releases/download/0.41.0-av3/MPVKit.xcframework.zip' }
+  s.source           = { :http => 'https://github.com/streamyfin/MPVKit/releases/download/0.41.0-av4/MPVKit.xcframework.zip' }
 
   s.ios.deployment_target  = '14.0'
   s.tvos.deployment_target = '14.0'

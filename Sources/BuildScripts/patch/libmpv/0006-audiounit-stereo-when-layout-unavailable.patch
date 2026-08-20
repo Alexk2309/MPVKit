@@ -1,0 +1,50 @@
+diff --git a/audio/out/ao_audiounit.m b/audio/out/ao_audiounit.m
+index 662f66d..4c2fec2 100644
+--- a/audio/out/ao_audiounit.m
++++ b/audio/out/ao_audiounit.m
+@@ -148,22 +148,36 @@ static bool init_audiounit(struct ao *ao)
+ 
+     err = au_get_ary(p->audio_unit, kAudioUnitProperty_AudioChannelLayout, kAudioUnitScope_Output,
+                      0, (void**)&layout, &size);
+-    CHECK_CA_ERROR_L(coreaudio_error_audiounit,
+-                     "unable to retrieve audio unit channel layout");
++    if (err != noErr) {
++        // Some tvOS HDMI routes - Dolby MAT / "Continuous Audio Connection"
++        // with an Atmos sink - refuse this query outright even though the
++        // unit initialized fine and will take a plain stereo stream. Failing
++        // the whole AO here leaves mpv with no audio output at all, so treat
++        // it as "no layout available" instead and fall through to stereo,
++        // which is what VLC's audiounit_ios does on the same routes. Note
++        // au_get_ary() may have freed *layout already; never touch it again.
++        check_ca_st(ao, MSGL_WARN, err,
++                    "unable to retrieve audio unit channel layout - "
++                    "falling back to stereo");
++        layout = NULL;
++    }
+ 
+-    MP_VERBOSE(ao, "AU channel layout tag: %x (%x)\n", layout->mChannelLayoutTag, layout->mChannelBitmap);
++    if (layout) {
++        MP_VERBOSE(ao, "AU channel layout tag: %x (%x)\n", layout->mChannelLayoutTag, layout->mChannelBitmap);
+ 
+-    layout = convert_layout(layout, &size);
+-    if (!layout) {
+-        MP_ERR(ao, "unable to convert channel layout to list format\n");
+-        goto coreaudio_error_audiounit;
++        // convert_layout() frees the input on failure, so layout is not
++        // dangling afterwards.
++        layout = convert_layout(layout, &size);
++        if (!layout)
++            MP_WARN(ao, "unable to convert channel layout to list format - "
++                        "falling back to stereo\n");
+     }
+ 
+-    for (UInt32 i = 0; i < layout->mNumberChannelDescriptions; i++) {
++    for (UInt32 i = 0; layout && i < layout->mNumberChannelDescriptions; i++) {
+         MP_VERBOSE(ao, "channel map: %i: %u\n", i, layout->mChannelDescriptions[i].mChannelLabel);
+     }
+ 
+-    if (af_fmt_is_spdif(ao->format) || instance.outputNumberOfChannels <= 2) {
++    if (!layout || af_fmt_is_spdif(ao->format) || instance.outputNumberOfChannels <= 2) {
+         ao->channels = (struct mp_chmap)MP_CHMAP_INIT_STEREO;
+         MP_VERBOSE(ao, "using stereo output\n");
+     } else {
