@@ -5,7 +5,11 @@ on:
     inputs:
       version:
         description: 'Release tag name'
-        default: '0.41.0-av4'
+        default: '0.41.0-av5'
+  pull_request:
+    branches:
+      - main
+      - avfoundation-ao-tvos
   push:
     branches:
       - avfoundation-ao-tvos
@@ -25,7 +29,7 @@ jobs:
         run: |
           VERSION="$INPUT_VERSION"
           if [ -z "$VERSION" ]; then
-            VERSION="0.41.0-av4"
+            VERSION="0.41.0-av5"
           fi
           echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
 
@@ -46,6 +50,7 @@ jobs:
         run: ./Sources/BuildScripts/create-combined-framework.sh
 
       - name: Upload binary to GitHub Release
+        if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ env.RELEASE_VERSION }}
