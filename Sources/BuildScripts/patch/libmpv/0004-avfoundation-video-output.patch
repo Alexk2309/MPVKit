@@ -1,5 +1,18 @@
+From 3ab3f80d530566ef8b161ad2d9252aa6e8a8981a Mon Sep 17 00:00:00 2001
+From: Alex Kim <alexkim5682@gmail.com>
+Date: Sun, 1 Mar 2026 01:04:26 +1100
+Subject: [PATCH] Add avfoundation support
+
+---
+ meson.build                 |    8 +
+ meson.options               |    1 +
+ video/out/vo.c              |    8 +
+ video/out/vo_avfoundation.m | 1281 +++++++++++++++++++++++++++++++++++
+ 4 files changed, 1298 insertions(+)
+ create mode 100644 video/out/vo_avfoundation.m
+
 diff --git a/meson.build b/meson.build
-index 42ece8e..56cb290 100644
+index fb10be5078..c02552e41f 100644
 --- a/meson.build
 +++ b/meson.build
 @@ -823,6 +823,14 @@ if features['avfoundation']
@@ -18,7 +31,7 @@ index 42ece8e..56cb290 100644
                         'AudioUnit', 'AudioToolbox'], required: get_option('coreaudio'))
  features += {'coreaudio': coreaudio.found()}
 diff --git a/meson.options b/meson.options
-index 81bc931..1ac622a 100644
+index 52782f73d6..f08e396f1a 100644
 --- a/meson.options
 +++ b/meson.options
 @@ -62,6 +62,7 @@ option('d3d11', type: 'feature', value: 'auto', description: 'Direct3D 11 video
@@ -30,7 +43,7 @@ index 81bc931..1ac622a 100644
  option('egl-android', type: 'feature', value: 'auto', description: 'Android EGL support')
  option('egl-angle', type: 'feature', value: 'auto', description: 'OpenGL ANGLE headers')
 diff --git a/video/out/vo.c b/video/out/vo.c
-index c9cde30..582acbe 100644
+index c9cde30478..64484b1b71 100644
 --- a/video/out/vo.c
 +++ b/video/out/vo.c
 @@ -46,6 +46,7 @@
@@ -41,22 +54,26 @@ index c9cde30..582acbe 100644
  extern const struct vo_driver video_out_mediacodec_embed;
  extern const struct vo_driver video_out_x11;
  extern const struct vo_driver video_out_vdpau;
-@@ -69,6 +70,9 @@ extern const struct vo_driver video_out_kitty;
- 
+@@ -70,6 +71,13 @@ extern const struct vo_driver video_out_kitty;
  static const struct vo_driver *const video_out_drivers[] =
  {
+     // high-quality and well-supported VOs first:
 +#if HAVE_VO_AVFOUNDATION
 +    &video_out_avfoundation,
 +#endif
-     // high-quality and well-supported VOs first:
++#if HAVE_ANDROID
++    &video_out_mediacodec_embed,
++#endif
++    &video_out_gpu,
      &video_out_gpu_next,
      &video_out_gpu,
+ 
 diff --git a/video/out/vo_avfoundation.m b/video/out/vo_avfoundation.m
 new file mode 100644
-index 0000000..779f5c9
+index 0000000000..8155d7a0e8
 --- /dev/null
 +++ b/video/out/vo_avfoundation.m
-@@ -0,0 +1,1032 @@
+@@ -0,0 +1,1281 @@
 +/*
 + * This file is part of mpv.
 + *
@@ -84,9 +101,12 @@ index 0000000..779f5c9
 +#include "video/mp_image.h"
 +#include "video/hwdec.h"
 +#include "sub/osd.h"
++#include "sub/draw_bmp.h"
 +
-+// libplacebo color types for HDR metadata
-+#include <libplacebo/colorspace.h>
++// libplacebo for color-correct HDR/DV compositing
++#include <libplacebo/vulkan.h>
++#include <libplacebo/renderer.h>
++#include <libplacebo/utils/upload.h>
 +
 +#import <CoreMedia/CoreMedia.h>
 +#import <AVFoundation/AVFoundation.h>
@@ -94,6 +114,7 @@ index 0000000..779f5c9
 +#import <CoreImage/CoreImage.h>
 +#import <QuartzCore/QuartzCore.h>
 +#import <Metal/Metal.h>
++#import <CoreVideo/CoreVideo.h>
 +#import <TargetConditionals.h>
 +
 +#if TARGET_OS_IPHONE
@@ -121,7 +142,14 @@ index 0000000..779f5c9
 +    CVPixelBufferPoolRef outputPool;
 +    int output_pool_w, output_pool_h;
 +    CGImageRef cachedSubtitleImage;
++    void *cachedSubtitleCIImage;  // CIImage* stored as void* with manual retain/release
 +    bool has_subtitle;
++    
++    // Dirty rect subtitle rendering (reduces memory from 33MB to ~5MB for 4K)
++    void *subtitleBuffer;           // Reusable backing buffer
++    size_t subtitleBufferSize;      // Current buffer size
++    int subtitle_buf_w, subtitle_buf_h;  // Current buffer dimensions
++    CGRect subtitleBounds;          // Bounding box in full-frame coordinates (for positioning)
 +    
 +    // Software frame upload support
 +    CVPixelBufferPoolRef swUploadPool;
@@ -133,6 +161,9 @@ index 0000000..779f5c9
 +    
 +    // Track if OSD callback was invoked this frame
 +    bool osd_callback_invoked;
++    
++    // Display resolution for scaling subtitles (0 = no upscaling)
++    int display_height;
 +};
 +
 +// Helper to sync OSD layer frame with display layer bounds
@@ -210,33 +241,18 @@ index 0000000..779f5c9
 +    return true;
 +}
 +
-+// Create output pool matching the source format to preserve quality
-+// Strategy: Use BGRA for 8-bit SDR (matches subtitle format, avoids half-float precision loss)
-+//           Use RGBA half-float for 10-bit HDR (necessary for HDR precision)
++
++// Create output pool - always use RGBA half-float for consistent HDR handling
++// This ensures all composited frames use the same format, preventing HDR mode switches
 +static bool create_output_pool(struct vo *vo, int w, int h, OSType format)
 +{
 +    struct priv *p = vo->priv;
-+    
-+    OSType outputFormat;
-+    
-+    // For 10-bit HDR content (P010), use RGBA half-float to preserve HDR precision
-+    if (format == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange ||
-+        format == kCVPixelFormatType_420YpCbCr10BiPlanarFullRange) {
-+        outputFormat = kCVPixelFormatType_64RGBAHalf;
-+    }
-+    // For 8-bit SDR content, use BGRA (matches subtitle format, avoids half-float precision issues)
-+    // This minimizes format conversions and preserves quality better than RGBA half-float
-+    else if (format == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange ||
-+             format == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange ||
-+             format == kCVPixelFormatType_420YpCbCr8Planar) {
-+        outputFormat = kCVPixelFormatType_32BGRA;
-+    }
-+    // Default to RGBA half-float for unknown formats (HDR-safe fallback)
-+    else {
-+        outputFormat = kCVPixelFormatType_64RGBAHalf;
-+    }
-+    
-+    return create_pixel_buffer_pool(vo, &p->outputPool, &p->output_pool_w, 
++
++    // Always use RGBA half-float for compositing to ensure consistent HDR handling
++    // This prevents format switching that can cause HDR display mode changes
++    OSType outputFormat = kCVPixelFormatType_64RGBAHalf;
++
++    return create_pixel_buffer_pool(vo, &p->outputPool, &p->output_pool_w,
 +        &p->output_pool_h, NULL, w, h, outputFormat, "composite output");
 +}
 +
@@ -250,83 +266,12 @@ index 0000000..779f5c9
 +        kCVImageBufferMasteringDisplayColorVolumeKey,  // HDR10 static metadata
 +        kCVImageBufferContentLightLevelInfoKey,        // MaxCLL, MaxFALL
 +    };
-+
++    
 +    for (size_t i = 0; i < MP_ARRAY_SIZE(keys); i++) {
 +        CFTypeRef value = CVBufferGetAttachment(src, keys[i], NULL);
 +        if (value) {
 +            CVBufferSetAttachment(dst, keys[i], value, kCVAttachmentMode_ShouldPropagate);
 +        }
-+    }
-+}
-+
-+// Attach HDR colorspace metadata to pixel buffer based on mp_image params
-+// This ensures proper HDR signaling to AVSampleBufferDisplayLayer on tvOS
-+static void attach_hdr_metadata(struct vo *vo, CVPixelBufferRef pixbuf,
-+                                struct mp_image *mpi)
-+{
-+    if (!pixbuf || !mpi)
-+        return;
-+
-+    // Access colorspace from mp_image params
-+    // mpi->params.color contains pl_color_space with primaries and transfer
-+    struct pl_color_space color = mpi->params.color;
-+
-+    // Check for BT.2020 primaries (wide color gamut used by HDR)
-+    if (color.primaries == PL_COLOR_PRIM_BT_2020) {
-+        CVBufferSetAttachment(pixbuf, kCVImageBufferColorPrimariesKey,
-+                              kCVImageBufferColorPrimaries_ITU_R_2020,
-+                              kCVAttachmentMode_ShouldPropagate);
-+        CVBufferSetAttachment(pixbuf, kCVImageBufferYCbCrMatrixKey,
-+                              kCVImageBufferYCbCrMatrix_ITU_R_2020,
-+                              kCVAttachmentMode_ShouldPropagate);
-+        MP_VERBOSE(vo, "HDR: Attached BT.2020 color primaries and matrix\n");
-+    }
-+
-+    // Check for PQ transfer function (HDR10, Dolby Vision)
-+    if (color.transfer == PL_COLOR_TRC_PQ) {
-+        CVBufferSetAttachment(pixbuf, kCVImageBufferTransferFunctionKey,
-+                              kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ,
-+                              kCVAttachmentMode_ShouldPropagate);
-+        MP_VERBOSE(vo, "HDR: Attached PQ transfer function (HDR10/DolbyVision)\n");
-+    }
-+    // Check for HLG transfer function
-+    else if (color.transfer == PL_COLOR_TRC_HLG) {
-+        CVBufferSetAttachment(pixbuf, kCVImageBufferTransferFunctionKey,
-+                              kCVImageBufferTransferFunction_ITU_R_2100_HLG,
-+                              kCVAttachmentMode_ShouldPropagate);
-+        MP_VERBOSE(vo, "HDR: Attached HLG transfer function\n");
-+    }
-+
-+    // Attach HDR static metadata (MaxCLL, MaxFALL) if available
-+    struct pl_hdr_metadata hdr = mpi->params.color.hdr;
-+    if (hdr.max_cll > 0 || hdr.max_fall > 0) {
-+        // ContentLightLevelInfo structure:
-+        // - 2 bytes: MaxCLL (max content light level) in cd/m²
-+        // - 2 bytes: MaxFALL (max frame-average light level) in cd/m²
-+        uint16_t cll_data[2] = {
-+            (uint16_t)fminf(hdr.max_cll, 65535.0f),
-+            (uint16_t)fminf(hdr.max_fall, 65535.0f)
-+        };
-+
-+        CFDataRef cllInfo = CFDataCreate(NULL, (const UInt8 *)cll_data, sizeof(cll_data));
-+        if (cllInfo) {
-+            CVBufferSetAttachment(pixbuf, kCVImageBufferContentLightLevelInfoKey,
-+                                  cllInfo, kCVAttachmentMode_ShouldPropagate);
-+            CFRelease(cllInfo);
-+            MP_VERBOSE(vo, "HDR: Attached CLL metadata (MaxCLL=%u, MaxFALL=%u)\n",
-+                       cll_data[0], cll_data[1]);
-+        }
-+    }
-+
-+    // Attach mastering display metadata if available
-+    if (hdr.max_luma > 0 || hdr.min_luma > 0) {
-+        // MasteringDisplayColorVolume contains:
-+        // - Display primaries (RGB chromaticity coordinates)
-+        // - White point chromaticity
-+        // - Min/max luminance
-+        // This is a complex structure - for now we log availability
-+        MP_VERBOSE(vo, "HDR: Mastering display metadata available (min=%.4f, max=%.1f cd/m²)\n",
-+                   hdr.min_luma, hdr.max_luma);
 +    }
 +}
 +
@@ -432,7 +377,45 @@ index 0000000..779f5c9
 +    return pixbuf;
 +}
 +
-+// Render subtitle bitmap to CGImage (used by both modes)
++// Calculate tight bounding box around all subtitle parts
++// Returns rect in CoreGraphics coordinates (origin at bottom-left)
++static CGRect calculate_subtitle_bounds(struct sub_bitmaps *imgs, int frame_w, int frame_h)
++{
++    if (!imgs || imgs->num_parts == 0)
++        return CGRectZero;
++    
++    int minX = INT_MAX, minY = INT_MAX, maxX = 0, maxY = 0;
++    
++    for (int i = 0; i < imgs->num_parts; i++) {
++        struct sub_bitmap *sb = &imgs->parts[i];
++        if (!sb->bitmap || sb->w <= 0 || sb->h <= 0)
++            continue;
++        
++        minX = MPMIN(minX, sb->x);
++        minY = MPMIN(minY, sb->y);
++        maxX = MPMAX(maxX, sb->x + sb->dw);
++        maxY = MPMAX(maxY, sb->y + sb->dh);
++    }
++    
++    if (minX >= maxX || minY >= maxY)
++        return CGRectZero;
++    
++    // Add padding for anti-aliasing edges
++    minX = MPMAX(0, minX - 2);
++    minY = MPMAX(0, minY - 2);
++    maxX = MPMIN(frame_w, maxX + 2);
++    maxY = MPMIN(frame_h, maxY + 2);
++    
++    int rectW = maxX - minX;
++    int rectH = maxY - minY;
++    
++    // Return rect in CG coordinates (Y-flipped: origin at bottom-left)
++    return CGRectMake(minX, frame_h - maxY, rectW, rectH);
++}
++
++// Render subtitle bitmap to CGImage
++// In composite mode: uses dirty rect optimization (smaller buffer, positioned in composite_frame)
++// In CALayer mode: renders full frame (CALayer displays as overlay)
 +static CGImageRef render_subtitle_image(struct vo *vo, struct sub_bitmaps *imgs)
 +{
 +    struct priv *p = vo->priv;
@@ -440,28 +423,85 @@ index 0000000..779f5c9
 +    if (!imgs || imgs->num_parts == 0)
 +        return NULL;
 +    
-+    int w = p->osd_w;
-+    int h = p->osd_h;
++    int frame_w = p->osd_w;
++    int frame_h = p->osd_h;
 +    
-+    if (w <= 0 || h <= 0)
++    if (frame_w <= 0 || frame_h <= 0)
 +        return NULL;
 +    
++    int subW, subH, offsetX, offsetY_mpv;
 +    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
 +    if (!colorSpace)
 +        return NULL;
 +    
-+    CGContextRef context = CGBitmapContextCreate(
-+        NULL, w, h, 8, w * 4, colorSpace,
-+        kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big
-+    );
++    CGContextRef context;
++    
++    if (p->composite_osd) {
++        // Composite mode: use dirty rect optimization
++        // Only allocates memory for the subtitle bounding box, not full frame
++        CGRect bounds = calculate_subtitle_bounds(imgs, frame_w, frame_h);
++        if (CGRectIsEmpty(bounds)) {
++            CGColorSpaceRelease(colorSpace);
++            return NULL;
++        }
++        
++        subW = (int)bounds.size.width;
++        subH = (int)bounds.size.height;
++        offsetX = (int)bounds.origin.x;
++        int offsetY_cg = (int)bounds.origin.y;  // CG coords (from bottom)
++        
++        // Store bounds for use in composite_frame (for positioning)
++        p->subtitleBounds = bounds;
++        
++        // Calculate required buffer size
++        size_t bytesPerRow = subW * 4;
++        size_t needed = bytesPerRow * subH;
++        
++        // Reuse or reallocate buffer
++        if (needed > p->subtitleBufferSize) {
++            free(p->subtitleBuffer);
++            p->subtitleBuffer = malloc(needed);
++            p->subtitleBufferSize = needed;
++            if (!p->subtitleBuffer) {
++                p->subtitleBufferSize = 0;
++                CGColorSpaceRelease(colorSpace);
++                return NULL;
++            }
++        }
++        
++        // Clear buffer for reuse
++        memset(p->subtitleBuffer, 0, needed);
++        
++        context = CGBitmapContextCreate(
++            p->subtitleBuffer, subW, subH, 8, bytesPerRow, colorSpace,
++            kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big
++        );
++        
++        // Calculate offset from full-frame to bounding box coordinates
++        offsetY_mpv = frame_h - offsetY_cg - subH;
++    } else {
++        // CALayer mode: render full frame (subtitles at their correct positions)
++        // CALayer will overlay this on video
++        subW = frame_w;
++        subH = frame_h;
++        offsetX = 0;
++        offsetY_mpv = 0;
++        p->subtitleBounds = CGRectZero;
++        
++        context = CGBitmapContextCreate(
++            NULL, subW, subH, 8, subW * 4, colorSpace,
++            kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big
++        );
++    }
++    
 +    CGColorSpaceRelease(colorSpace);
 +    
 +    if (!context)
 +        return NULL;
 +    
-+    CGContextClearRect(context, CGRectMake(0, 0, w, h));
++    CGContextClearRect(context, CGRectMake(0, 0, subW, subH));
 +    
-+    // Create colorspace once for all BGRA parts (libass doesn't need it)
++    // Create colorspace once for all BGRA parts
 +    CGColorSpaceRef partColorSpace = (imgs->format == SUBBITMAP_BGRA) 
 +        ? CGColorSpaceCreateDeviceRGB() : NULL;
 +    
@@ -477,6 +517,14 @@ index 0000000..779f5c9
 +        if (!provider)
 +            continue;
 +        
++        // Calculate position relative to bounding box (not full frame)
++        // sb->x, sb->y are in mpv coords (origin top-left)
++        int relX = sb->x - offsetX;
++        int relY = sb->y - offsetY_mpv;
++        
++        // Convert to CG coords (origin bottom-left of bounding box)
++        CGRect destRect = CGRectMake(relX, subH - relY - sb->dh, sb->dw, sb->dh);
++        
 +        if (imgs->format == SUBBITMAP_BGRA) {
 +            CGImageRef partImage = CGImageCreate(
 +                sb->w, sb->h, 8, 32, sb->stride, partColorSpace,
@@ -484,19 +532,16 @@ index 0000000..779f5c9
 +                provider, NULL, false, kCGRenderingIntentDefault);
 +            
 +            if (partImage) {
-+                CGRect destRect = CGRectMake(sb->x, h - sb->y - sb->dh, sb->dw, sb->dh);
 +                CGContextDrawImage(context, destRect, partImage);
 +                CGImageRelease(partImage);
 +            }
 +        } else if (imgs->format == SUBBITMAP_LIBASS) {
-+            // Invert decode array: libass uses 255=opaque, but CGImageMask uses 0=paint
 +            CGFloat decode[] = {1, 0};
 +            CGImageRef mask = CGImageMaskCreate(
 +                sb->w, sb->h, 8, 8, sb->stride, provider, decode, false);
 +            
 +            if (mask) {
 +                CGContextSaveGState(context);
-+                CGRect destRect = CGRectMake(sb->x, h - sb->y - sb->dh, sb->dw, sb->dh);
 +                CGContextClipToMask(context, destRect, mask);
 +                
 +                uint32_t c = sb->libass.color;
@@ -515,11 +560,16 @@ index 0000000..779f5c9
 +        CGDataProviderRelease(provider);
 +    }
 +    
++    // (debug indicator removed)
++
 +    if (partColorSpace)
 +        CGColorSpaceRelease(partColorSpace);
 +    
 +    CGImageRef result = CGBitmapContextCreateImage(context);
 +    CGContextRelease(context);
++    
++    p->subtitle_buf_w = subW;
++    p->subtitle_buf_h = subH;
 +    
 +    return result;
 +}
@@ -533,14 +583,19 @@ index 0000000..779f5c9
 +    // Mark that callback was invoked this frame
 +    p->osd_callback_invoked = true;
 +    
++    // Clear subtitles when there are none
 +    if (!imgs || imgs->num_parts == 0) {
-+        // Clear subtitles when there are none
 +        if (p->has_subtitle) {
 +            p->has_subtitle = false;
++            p->osd_change_id = 0;  // Reset change_id so next subtitle renders
 +            if (p->composite_osd) {
 +                if (p->cachedSubtitleImage) {
 +                    CGImageRelease(p->cachedSubtitleImage);
 +                    p->cachedSubtitleImage = NULL;
++                }
++                if (p->cachedSubtitleCIImage) {
++                    CFRelease(p->cachedSubtitleCIImage);
++                    p->cachedSubtitleCIImage = NULL;
 +                }
 +            } else {
 +                dispatch_async(dispatch_get_main_queue(), ^{
@@ -554,10 +609,8 @@ index 0000000..779f5c9
 +        return;
 +    }
 +    
-+    // Skip redraw if content hasn't changed
-+    if (imgs->change_id != 0 && imgs->change_id == p->osd_change_id)
-+        return;
-+    
++    // Always redraw to reflect live changes (e.g. scaling) even when paused.
++    // Disable change_id-based caching per request to ensure immediate updates.
 +    p->osd_change_id = imgs->change_id;
 +    p->has_subtitle = true;
 +    
@@ -570,6 +623,13 @@ index 0000000..779f5c9
 +        if (p->cachedSubtitleImage)
 +            CGImageRelease(p->cachedSubtitleImage);
 +        p->cachedSubtitleImage = subtitleImage;
++        
++        // Pre-create and cache CIImage with manual retain (bypass ARC issues in C struct)
++        if (p->cachedSubtitleCIImage) {
++            CFRelease(p->cachedSubtitleCIImage);
++        }
++        CIImage *ciImg = [CIImage imageWithCGImage:subtitleImage];
++        p->cachedSubtitleCIImage = (void *)CFBridgingRetain(ciImg);
 +    } else {
 +        // CALayer mode: update layer on main thread
 +        dispatch_async(dispatch_get_main_queue(), ^{
@@ -594,18 +654,45 @@ index 0000000..779f5c9
 +    if (!p->composite_osd && !p->osdLayer)
 +        return;
 +    
-+    int w = vo->params ? vo->params->w : 0;
-+    int h = vo->params ? vo->params->h : 0;
++    int w = 0, h = 0;
++    if (p->composite_osd) {
++        // In composite mode, lock OSD resolution to the video frame size to
++        // keep a stable output size (prevents flicker/resizes) and ensure
++        // subtitles render 1:1 with the final composite buffer.
++        w = vo->params ? vo->params->w : 0;
++        h = vo->params ? vo->params->h : 0;
++    } else {
++        // Non-composite: prefer current display layer pixel size for overlay sharpness
++        if (p->displayLayer) {
++            CGRect bounds = p->displayLayer.bounds; // points
++            CGFloat cs = 1.0;
++            if ([p->displayLayer respondsToSelector:@selector(contentsScale)])
++                cs = p->displayLayer.contentsScale;
++            w = (int)MPMAX(1.0, bounds.size.width * cs);
++            h = (int)MPMAX(1.0, bounds.size.height * cs);
++        }
++        // Fallback to video params if display layer unavailable
++        if (w <= 0 || h <= 0) {
++            w = vo->params ? vo->params->w : 0;
++            h = vo->params ? vo->params->h : 0;
++        }
++    }
 +    
 +    if (w <= 0 || h <= 0)
 +        return;
 +    
-+    p->osd_w = w;
-+    p->osd_h = h;
++    // In composite mode, render subtitles at video resolution for stability
++    int render_w = w;
++    int render_h = h;
++    
++    // No additional capping/scaling in composite mode; keep it fixed to video size
++    
++    p->osd_w = render_w;
++    p->osd_h = render_h;
 +    
 +    struct mp_osd_res osd_res = {
-+        .w = w,
-+        .h = h,
++        .w = render_w,
++        .h = render_h,
 +        .display_par = 1.0,
 +    };
 +    
@@ -623,10 +710,15 @@ index 0000000..779f5c9
 +    // Clear any cached subtitle state
 +    if (!p->osd_callback_invoked && p->has_subtitle) {
 +        p->has_subtitle = false;
++        p->osd_change_id = 0;
 +        if (p->composite_osd) {
 +            if (p->cachedSubtitleImage) {
 +                CGImageRelease(p->cachedSubtitleImage);
 +                p->cachedSubtitleImage = NULL;
++            }
++            if (p->cachedSubtitleCIImage) {
++                CFRelease(p->cachedSubtitleCIImage);
++                p->cachedSubtitleCIImage = NULL;
 +            }
 +        } else if (p->osdLayer) {
 +            dispatch_async(dispatch_get_main_queue(), ^{
@@ -647,14 +739,19 @@ index 0000000..779f5c9
 +    if (!p->cachedSubtitleImage || !p->has_subtitle)
 +        return NULL;
 +    
-+    size_t w = CVPixelBufferGetWidth(videoBuffer);
-+    size_t h = CVPixelBufferGetHeight(videoBuffer);
++    size_t videoW = CVPixelBufferGetWidth(videoBuffer);
++    size_t videoH = CVPixelBufferGetHeight(videoBuffer);
++
++    // Use the video frame size for composite output to keep a stable format
++    // during playback and avoid display layer flicker/resizing.
++    size_t outW = videoW;
++    size_t outH = videoH;
 +    
 +    // Detect original pixel format to preserve quality
 +    OSType sourceFormat = CVPixelBufferGetPixelFormatType(videoBuffer);
 +    
 +    // Ensure output pool matches dimensions and format
-+    if (!create_output_pool(vo, (int)w, (int)h, sourceFormat))
++    if (!create_output_pool(vo, (int)outW, (int)outH, sourceFormat))
 +        return NULL;
 +    
 +    // Get output buffer from pool
@@ -692,26 +789,52 @@ index 0000000..779f5c9
 +        
 +        if (fallbackColorSpace)
 +            CGColorSpaceRelease(fallbackColorSpace);
-+        CIImage *subtitleImage = [CIImage imageWithCGImage:p->cachedSubtitleImage];
 +        
-+        if (!videoImage || !subtitleImage) {
++        if (!videoImage) {
 +            CVPixelBufferRelease(outputBuffer);
 +            return NULL;
 +        }
 +        
-+        // Scale subtitle to match video dimensions if needed
-+        CGSize videoSize = videoImage.extent.size;
-+        CGSize subSize = subtitleImage.extent.size;
-+        
-+        if (subSize.width != videoSize.width || subSize.height != videoSize.height) {
-+            CGFloat scaleX = videoSize.width / subSize.width;
-+            CGFloat scaleY = videoSize.height / subSize.height;
-+            subtitleImage = [subtitleImage imageByApplyingTransform:
++        // Scale video to output dimensions if upscaling
++        if (outW != videoW || outH != videoH) {
++            CGFloat scaleX = (CGFloat)outW / (CGFloat)videoW;
++            CGFloat scaleY = (CGFloat)outH / (CGFloat)videoH;
++            videoImage = [videoImage imageByApplyingTransform:
 +                CGAffineTransformMakeScale(scaleX, scaleY)];
 +        }
 +        
++        // Use cached CIImage (manually retained to bypass ARC issues in C struct)
++        CIImage *subtitleImage = (__bridge CIImage *)p->cachedSubtitleCIImage;
++        
++        if (!subtitleImage) {
++            CVPixelBufferRelease(outputBuffer);
++            return NULL;
++        }
++        
++        // Position subtitle at correct location using dirty rect bounds
++        // The subtitle image is only the bounding box region, not full frame
++        // We need to scale and translate it to the correct position in output
++        
++        // Calculate scale factor from OSD resolution to output resolution
++        CGFloat scaleX = (CGFloat)outW / (CGFloat)p->osd_w;
++        CGFloat scaleY = (CGFloat)outH / (CGFloat)p->osd_h;
++        
++        // Get the bounding box position (in OSD coordinates)
++        CGFloat boundsX = p->subtitleBounds.origin.x;
++        CGFloat boundsY = p->subtitleBounds.origin.y;
++        
++        // Build transform: first scale the subtitle to output resolution,
++        // then translate to the correct position
++        CGAffineTransform transform = CGAffineTransformIdentity;
++        transform = CGAffineTransformScale(transform, scaleX, scaleY);
++        transform = CGAffineTransformTranslate(transform, boundsX, boundsY);
++        
++        subtitleImage = [subtitleImage imageByApplyingTransform:transform];
++        
 +        // Composite subtitle over video
 +        CIImage *composited = [subtitleImage imageByCompositingOverImage:videoImage];
++
++        // (debug indicator removed)
 +        
 +        // Render to output buffer, preserving color space
 +        CGColorSpaceRef outputColorSpace = CVImageBufferGetColorSpace(videoBuffer);
@@ -781,6 +904,17 @@ index 0000000..779f5c9
 +        }
 +        
 +        MP_VERBOSE(vo, "HDR-compatible compositing mode enabled with Metal\n");
++        
++        // Get display resolution for subtitle upscaling
++#if TARGET_OS_IPHONE
++        CGRect screenBounds = [UIScreen mainScreen].nativeBounds;
++        p->display_height = (int)screenBounds.size.height;
++#else
++        NSScreen *screen = [NSScreen mainScreen];
++        CGFloat scaleFactor = screen.backingScaleFactor;
++        p->display_height = (int)(screen.frame.size.height * scaleFactor);
++#endif
++        MP_VERBOSE(vo, "Display height for subtitle scaling: %d\n", p->display_height);
 +    }
 +
 +    // Create OSD layer only if not in composite mode
@@ -801,6 +935,7 @@ index 0000000..779f5c9
 +            p->osdLayer.backgroundColor = NULL;
 +            p->osdLayer.opaque = NO;
 +            p->osdLayer.contentsGravity = kCAGravityResizeAspect;
++            p->osdLayer.name = @"mpv-osd";  // Named for easy identification by host app
 +            
 +            [p->displayLayer addSublayer:p->osdLayer];
 +        });
@@ -836,7 +971,9 @@ index 0000000..779f5c9
 +            CVPixelBufferPoolFlush(p->swUploadPool, kCVPixelBufferPoolFlushExcessBuffers);
 +    }
 +    
-+    mp_image_unrefp(&p->next_image);
++    // Keep a reference to the last frame so VOCTRL_REDRAW (while paused)
++    // can composite updated subtitles onto it. It will be replaced on the
++    // next draw_frame, and released on uninit.
 +}
 +
 +static bool draw_frame(struct vo *vo, struct vo_frame *frame)
@@ -880,25 +1017,65 @@ index 0000000..779f5c9
 +            }
 +            pixbufNeedsRelease = true;
 +        }
-+
-+        // Attach HDR colorspace metadata to pixel buffer
-+        // This ensures the display layer receives proper HDR signaling on tvOS
-+        attach_hdr_metadata(vo, pixbuf, mpi);
-+
++        
 +        CVPixelBufferRef finalBuffer = pixbuf;
 +        bool needsRelease = false;
-+        
-+        // In composite mode, render OSD and composite onto frame
++
++        // In composite mode, always composite to ensure consistent pixel format
++        // This prevents HDR mode switching when subtitles appear/disappear
 +        if (p->composite_osd) {
 +            render_osd(vo, pts);
-+            
++
 +            CVPixelBufferRef composited = composite_frame(vo, pixbuf);
 +            if (composited) {
 +                finalBuffer = composited;
 +                needsRelease = true;
++            } else {
++                // No subtitles to composite, but still convert to consistent format
++                // This ensures all frames in composite mode use the same pixel format
++                size_t videoW = CVPixelBufferGetWidth(pixbuf);
++                size_t videoH = CVPixelBufferGetHeight(pixbuf);
++                OSType sourceFormat = CVPixelBufferGetPixelFormatType(pixbuf);
++
++                if (!create_output_pool(vo, (int)videoW, (int)videoH, sourceFormat)) {
++                    MP_ERR(vo, "Failed to create output pool for format conversion\n");
++                    goto error;
++                }
++
++                CVPixelBufferRef convertedBuffer = NULL;
++                CVReturn status = CVPixelBufferPoolCreatePixelBuffer(
++                    kCFAllocatorDefault, p->outputPool, &convertedBuffer);
++
++                if (status == kCVReturnSuccess && convertedBuffer) {
++                    copy_hdr_metadata(pixbuf, convertedBuffer);
++
++                    @autoreleasepool {
++                        CGColorSpaceRef srcColorSpace = CVImageBufferGetColorSpace(pixbuf);
++                        CIImage *videoImage = srcColorSpace ?
++                            [CIImage imageWithCVPixelBuffer:pixbuf options:@{kCIImageColorSpace: (__bridge id)srcColorSpace}] :
++                            [CIImage imageWithCVPixelBuffer:pixbuf];
++
++                        if (videoImage) {
++                            CGColorSpaceRef outputColorSpace = CVImageBufferGetColorSpace(pixbuf);
++                            if (outputColorSpace) {
++                                [p->ciContext render:videoImage
++                                     toCVPixelBuffer:convertedBuffer
++                                              bounds:videoImage.extent
++                                          colorSpace:outputColorSpace];
++                            } else {
++                                [p->ciContext render:videoImage toCVPixelBuffer:convertedBuffer];
++                            }
++                            finalBuffer = convertedBuffer;
++                            needsRelease = true;
++                        } else {
++                            CVPixelBufferRelease(convertedBuffer);
++                        }
++                    }
++                }
 +            }
 +        }
-+        
++
++error:
 +        // Create and enqueue sample buffer
 +        CMTimebaseRef timebase = [p->displayLayer controlTimebase];
 +        CMTime presentationTime = timebase ? CMTimebaseGetTime(timebase) : kCMTimeInvalid;
@@ -983,6 +1160,16 @@ index 0000000..779f5c9
 +        CGImageRelease(p->cachedSubtitleImage);
 +        p->cachedSubtitleImage = NULL;
 +    }
++    if (p->cachedSubtitleCIImage) {
++        CFRelease(p->cachedSubtitleCIImage);
++        p->cachedSubtitleCIImage = NULL;
++    }
++    
++    // Reset dirty rect state (keep buffer for reuse)
++    p->subtitleBounds = CGRectZero;
++    p->subtitle_buf_w = 0;
++    p->subtitle_buf_h = 0;
++    
 +    p->has_subtitle = false;
 +    p->osd_change_id = 0;
 +    
@@ -1002,6 +1189,12 @@ index 0000000..779f5c9
 +    
 +    MP_VERBOSE(vo, "reconfig: %dx%d\n", params->w, params->h);
 +    
++    // Flush the display layer when video configuration changes
++    // This is critical for PiP: when a new video starts (e.g., autoplay), the old
++    // frames with different dimensions must be cleared. Otherwise, the PiP window
++    // won't resize to match the new video dimensions.
++    [p->displayLayer flushAndRemoveImage];
++    
 +    // Clear subtitles when video configuration changes
 +    clear_subtitle_state(vo);
 +    sync_osd_layer_frame(p);
@@ -1019,6 +1212,17 @@ index 0000000..779f5c9
 +    if (p->cachedSubtitleImage) {
 +        CGImageRelease(p->cachedSubtitleImage);
 +        p->cachedSubtitleImage = NULL;
++    }
++    if (p->cachedSubtitleCIImage) {
++        CFRelease(p->cachedSubtitleCIImage);
++        p->cachedSubtitleCIImage = NULL;
++    }
++    
++    // Clean up dirty rect subtitle buffer
++    if (p->subtitleBuffer) {
++        free(p->subtitleBuffer);
++        p->subtitleBuffer = NULL;
++        p->subtitleBufferSize = 0;
 +    }
 +    
 +    if (p->outputPool) {
@@ -1054,12 +1258,74 @@ index 0000000..779f5c9
 +        sync_osd_layer_frame(p);
 +        return VO_TRUE;
 +    case VOCTRL_RESET:
-+        // Called when playback stops or video changes
++        // Called on seek or when playback stops/video changes.
++        // To avoid a black flash during seeks, flush pending samples but keep
++        // the currently displayed image. For true reconfig/stop paths, we
++        // still clear the image via reconfig()/uninit().
 +        clear_subtitle_state(vo);
-+        [p->displayLayer flushAndRemoveImage];
++        [p->displayLayer flush];
 +        return VO_TRUE;
 +    case VOCTRL_REDRAW:
-+        p->osd_change_id = 0;
++        /* Force an immediate OSD render/update while paused. */
++
++        /* Ensure the OSD layer tracks current bounds before drawing. */
++        sync_osd_layer_frame(p);
++
++        /* Render OSD (updates CALayer in non-composite mode). */
++        render_osd(vo, p->next_pts);
++
++        /* In composite mode, if we have a cached last frame, composite the
++         * updated subtitles onto it and enqueue so the display updates while
++         * paused. */
++        if (p->composite_osd && p->next_image) {
++            CVPixelBufferRef pixbuf = NULL;
++            bool pixbufNeedsRelease = false;
++
++            if (p->next_image->imgfmt == IMGFMT_VIDEOTOOLBOX) {
++                pixbuf = (CVPixelBufferRef)p->next_image->planes[3];
++            } else {
++                pixbuf = upload_software_frame(vo, p->next_image);
++                if (pixbuf)
++                    pixbufNeedsRelease = true;
++            }
++
++            if (pixbuf) {
++                CVPixelBufferRef composited = composite_frame(vo, pixbuf);
++                if (composited) {
++                    CMTimebaseRef timebase = [p->displayLayer controlTimebase];
++                    CMTime presentationTime = timebase ? CMTimebaseGetTime(timebase) : kCMTimeInvalid;
++                    CMSampleTimingInfo info = {
++                        .presentationTimeStamp = presentationTime,
++                        .duration = kCMTimeInvalid,
++                        .decodeTimeStamp = kCMTimeInvalid
++                    };
++
++                    CMFormatDescriptionRef format = NULL;
++                    CMSampleBufferRef buf = NULL;
++                    OSStatus err = CMVideoFormatDescriptionCreateForImageBuffer(NULL, composited, &format);
++                    if (err == noErr && format) {
++                        err = CMSampleBufferCreateReadyWithImageBuffer(NULL, composited, format, &info, &buf);
++                        CFRelease(format);
++                        if (err == noErr && buf) {
++                            // Force immediate display while paused, even if the control timebase exists
++                            CFArrayRef attachments = CMSampleBufferGetSampleAttachmentsArray(buf, YES);
++                            CFDictionarySetValue(
++                                (CFMutableDictionaryRef)CFArrayGetValueAtIndex(attachments, 0),
++                                kCMSampleAttachmentKey_DisplayImmediately,
++                                kCFBooleanTrue
++                            );
++                            [p->displayLayer enqueueSampleBuffer:buf];
++                            CFRelease(buf);
++                        }
++                    }
++                    CVPixelBufferRelease(composited);
++                }
++
++                if (pixbufNeedsRelease)
++                    CVPixelBufferRelease(pixbuf);
++            }
++        }
++
 +        return VO_TRUE;
 +    case VOCTRL_UPDATE_WINDOW_TITLE:
 +        return VO_TRUE;
@@ -1089,3 +1355,6 @@ index 0000000..779f5c9
 +    .options = options,
 +    .options_prefix = "avfoundation",
 +};
+-- 
+2.50.1 (Apple Git-155)
+
